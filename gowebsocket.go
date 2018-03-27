@@ -50,7 +50,7 @@ func (socket *Socket) setConnectionOptions(options ConnectionOptions) {
 	socket.connectionOptions = options
 }
 
-func (socket *Socket) IsConnected () bool{
+func (socket *Socket) IsConnected() bool {
 	return socket.isConnected
 }
 
@@ -67,9 +67,12 @@ func (socket *Socket) Connect() {
 
 	socket.conn, _, err = socket.websocketDialer.Dial(socket.url, socket.requestHeader)
 
-	if err != nil && socket.OnConnectError != nil {
+	if err != nil {
 		socket.isConnected = false
-		go socket.OnConnectError(err, *socket)
+		if socket.OnConnectError != nil {
+			go socket.OnConnectError(err, *socket)
+		}
+		return
 	}
 
 	if socket.OnConnected != nil {
@@ -156,15 +159,33 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	socket := New("ws://echo.websocket.org/", nil);
+
+	socket.OnConnectError = func(err error, socket Socket) {
+		log.Fatal("Got connect error")
+	};
+
 	socket.OnConnected = func(socket Socket) {
 		log.Println("Connected to server");
 	};
 	socket.OnTextMessage = func(message string, socket Socket) {
 		log.Println("Got message Lolwa " + message)
 	};
+	socket.OnPingReceived = func(data string, socket Socket) {
+		log.Println("Got ping "+ data)
+	};
+
+	socket.OnDisconnected = func(err error, socket Socket) {
+		log.Println("Disconnected from server ")
+		return
+	};
+
 	socket.Connect()
 
-	socket.SendText("This is my sample test message")
+	i := 0
+	for (i < 10) {
+		socket.SendText("This is my sample test message")
+		i++
+	}
 
 	for {
 		select {
