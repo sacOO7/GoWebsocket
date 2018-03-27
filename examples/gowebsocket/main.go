@@ -17,6 +17,7 @@ func main() {
 		//Proxy: gowebsocket.BuildProxy("http://example.com"),
 		UseSSL:false,
 		UseCompression:false,
+		Subprotocols: [] string{"chat","superchat"},
 	}
 
 	socket.OnConnectError = func(err error, socket gowebsocket.Socket) {
