@@ -100,7 +100,28 @@ Create instance of `Websocket` by passing url of websocket-server end-point
     
 ``` 
 
+#### Sending Text message
+
+```go
+    socket.SendText("Hi there, this is my sample test message")
+```
+
+#### Sending Binary data
+```go
+    token := make([]byte, 4)
+    // rand.Read(token) putting some random value in token
+    socket.SendBinary(token)
+```
+
+#### Closing the connection with server
+```go
+    socket.Close()
+```
+
 #### Setting request headers
+```go
+
+```
 
 #### Setting proxy server
 - It can be set using connectionOptions by providing url to proxy server
