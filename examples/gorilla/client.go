@@ -80,3 +80,5 @@ func main() {
 		}
 	}
 }
+
+// go run client.go

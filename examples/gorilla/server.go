@@ -125,3 +125,5 @@ You can change the message and send multiple times.
 </body>
 </html>
 `))
+
+// go run server.go
