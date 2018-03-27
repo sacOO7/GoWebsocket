@@ -15,7 +15,7 @@ This client provides following easy to implement functionality
 To install use
 
 ```markdown
-    go get https://github.com/sacOO7/gowebsocket
+    go get github.com/sacOO7/gowebsocket
 ```
 
 Description
