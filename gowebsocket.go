@@ -42,6 +42,7 @@ type ReconnectionOptions struct {
 func New(url string) Socket {
 	return Socket{
 		Url: url,
+		RequestHeader: http.Header{},
 		ConnectionOptions: ConnectionOptions{
 			UseCompression: false,
 			UseSSL:         true,

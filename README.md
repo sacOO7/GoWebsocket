@@ -120,7 +120,11 @@ Create instance of `Websocket` by passing url of websocket-server end-point
 
 #### Setting request headers
 ```go
-
+	socket.RequestHeader.Set("Accept-Encoding","gzip, deflate, sdch")
+	socket.RequestHeader.Set("Accept-Language","en-US,en;q=0.8")
+	socket.RequestHeader.Set("Pragma","no-cache")
+	socket.RequestHeader.Set("User-Agent","Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
+	
 ```
 
 #### Setting proxy server
