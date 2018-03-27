@@ -29,10 +29,10 @@ type Socket struct {
 }
 
 type ConnectionOptions struct {
-	useCompression bool
-	useSSL         bool
-	proxy          func(*http.Request) (*url.URL, error)
-	subprotocols   [] string
+	UseCompression bool
+	UseSSL         bool
+	Proxy          func(*http.Request) (*url.URL, error)
+	Subprotocols   [] string
 }
 
 // todo Yet to be done
@@ -43,8 +43,8 @@ func New(url string) Socket {
 	return Socket{
 		Url: url,
 		ConnectionOptions: ConnectionOptions{
-			useCompression: false,
-			useSSL:         true,
+			UseCompression: false,
+			UseSSL:         true,
 		},
 		WebsocketDialer: &websocket.Dialer{},
 		sendMu:          &sync.Mutex{},
@@ -53,10 +53,10 @@ func New(url string) Socket {
 }
 
 func (socket *Socket) setConnectionOptions() {
-	socket.WebsocketDialer.EnableCompression = socket.ConnectionOptions.useCompression
-	socket.WebsocketDialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: socket.ConnectionOptions.useSSL}
-	socket.WebsocketDialer.Proxy = socket.ConnectionOptions.proxy
-	socket.WebsocketDialer.Subprotocols = socket.ConnectionOptions.subprotocols
+	socket.WebsocketDialer.EnableCompression = socket.ConnectionOptions.UseCompression
+	socket.WebsocketDialer.TLSClientConfig = &tls.Config{InsecureSkipVerify: socket.ConnectionOptions.UseSSL}
+	socket.WebsocketDialer.Proxy = socket.ConnectionOptions.Proxy
+	socket.WebsocketDialer.Subprotocols = socket.ConnectionOptions.Subprotocols
 }
 
 func (socket *Socket) Connect() {

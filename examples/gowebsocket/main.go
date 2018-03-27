@@ -12,8 +12,15 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	socket := gowebsocket.New("ws://echo.websocket.org/");
+
+	socket.ConnectionOptions = gowebsocket.ConnectionOptions {
+		//Proxy: gowebsocket.BuildProxy("http://example.com"),
+		UseSSL:false,
+		UseCompression:false,
+	}
+
 	socket.OnConnectError = func(err error, socket gowebsocket.Socket) {
-		log.Fatal("Got connect error")
+		log.Fatal("Got connect error ", err)
 	};
 	socket.OnConnected = func(socket gowebsocket.Socket) {
 		log.Println("Connected to server");
