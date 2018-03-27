@@ -9,6 +9,7 @@ import (
 	"errors"
 	"crypto/tls"
 	"net/url"
+	"sync"
 )
 
 type Socket struct {
@@ -25,6 +26,8 @@ type Socket struct {
 	OnPingReceived    func(data string, socket Socket)
 	OnPongReceived    func(data string, socket Socket)
 	isConnected       bool
+	sendMu            *sync.Mutex // Prevent "concurrent write to websocket connection"
+	receiveMu         *sync.Mutex
 }
 
 type ConnectionOptions struct {
@@ -43,6 +46,8 @@ func New(url string, requestHeader http.Header) Socket {
 			useSSL:         true,
 		},
 		websocketDialer: &websocket.Dialer{},
+		sendMu: &sync.Mutex{},
+		receiveMu: &sync.Mutex{},
 	}
 }
 
@@ -70,41 +75,47 @@ func (socket *Socket) Connect() {
 	if err != nil {
 		socket.isConnected = false
 		if socket.OnConnectError != nil {
-			go socket.OnConnectError(err, *socket)
+			socket.OnConnectError(err, *socket)
 		}
 		return
 	}
 
 	if socket.OnConnected != nil {
 		socket.isConnected = true
-		go socket.OnConnected(*socket)
+		socket.OnConnected(*socket)
 	}
 
+	defaultPingHandler := socket.conn.PingHandler()
 	socket.conn.SetPingHandler(func(appData string) error {
 		if socket.OnPingReceived != nil {
-			go socket.OnPingReceived(appData, *socket)
+			socket.OnPingReceived(appData, *socket)
 		}
-		return nil
+		return defaultPingHandler(appData)
 	})
 
+	defaultPongHandler := socket.conn.PongHandler()
 	socket.conn.SetPongHandler(func(appData string) error {
 		if socket.OnPongReceived != nil {
-			go socket.OnPongReceived(appData, *socket)
+			socket.OnPongReceived(appData, *socket)
 		}
-		return nil
+		return defaultPongHandler(appData)
 	})
 
+	defaultCloseHandler := socket.conn.CloseHandler()
 	socket.conn.SetCloseHandler(func(code int, text string) error {
+		result := defaultCloseHandler(code, text)
 		if socket.OnDisconnected != nil {
 			socket.isConnected = false
 			socket.OnDisconnected(errors.New(text), *socket)
 		}
-		return nil
+		return result
 	})
 
 	go func() {
 		for {
+			socket.receiveMu.Lock()
 			messageType, message, err := socket.conn.ReadMessage()
+			socket.receiveMu.Unlock()
 			if err != nil {
 				log.Println("read:", err)
 				return
@@ -114,11 +125,11 @@ func (socket *Socket) Connect() {
 			switch messageType {
 			case websocket.TextMessage:
 				if socket.OnTextMessage != nil {
-					go socket.OnTextMessage(string(message), *socket)
+					socket.OnTextMessage(string(message), *socket)
 				}
 			case websocket.BinaryMessage:
 				if socket.OnBinaryMessage != nil {
-					go socket.OnBinaryMessage(message, *socket)
+					socket.OnBinaryMessage(message, *socket)
 				}
 			}
 		}
@@ -126,7 +137,9 @@ func (socket *Socket) Connect() {
 }
 
 func (socket *Socket) SendText(message string) {
+	socket.sendMu.Lock()
 	err := socket.conn.WriteMessage(websocket.TextMessage, [] byte (message))
+	socket.sendMu.Unlock()
 	if err != nil {
 		log.Println("write:", err)
 		return
@@ -134,7 +147,9 @@ func (socket *Socket) SendText(message string) {
 }
 
 func (socket *Socket) SendBinary(data [] byte) {
+	socket.sendMu.Lock()
 	err := socket.conn.WriteMessage(websocket.BinaryMessage, data)
+	socket.sendMu.Unlock()
 	if err != nil {
 		log.Println("write:", err)
 		return
@@ -142,16 +157,17 @@ func (socket *Socket) SendBinary(data [] byte) {
 }
 
 func (socket *Socket) Close() {
+	socket.sendMu.Lock()
 	err := socket.conn.WriteMessage(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
+	socket.sendMu.Unlock()
 	if err != nil {
 		log.Println("write close:", err)
-		if socket.OnDisconnected != nil {
-			socket.isConnected = false
-			go socket.OnDisconnected(err, *socket)
-		}
-		return
 	}
 	socket.conn.Close()
+	if socket.OnDisconnected != nil {
+		socket.isConnected = false
+		socket.OnDisconnected(err, *socket)
+	}
 }
 
 func main() {
@@ -159,11 +175,9 @@ func main() {
 	signal.Notify(interrupt, os.Interrupt)
 
 	socket := New("ws://echo.websocket.org/", nil);
-
 	socket.OnConnectError = func(err error, socket Socket) {
 		log.Fatal("Got connect error")
 	};
-
 	socket.OnConnected = func(socket Socket) {
 		log.Println("Connected to server");
 	};
@@ -171,14 +185,12 @@ func main() {
 		log.Println("Got message Lolwa " + message)
 	};
 	socket.OnPingReceived = func(data string, socket Socket) {
-		log.Println("Got ping "+ data)
+		log.Println("Got ping " + data)
 	};
-
 	socket.OnDisconnected = func(err error, socket Socket) {
 		log.Println("Disconnected from server ")
 		return
 	};
-
 	socket.Connect()
 
 	i := 0
