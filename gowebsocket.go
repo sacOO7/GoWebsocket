@@ -1,11 +1,9 @@
-package main
+package gowebsocket
 
 import (
 	"github.com/gorilla/websocket"
 	"net/http"
 	"log"
-	"os"
-	"os/signal"
 	"errors"
 	"crypto/tls"
 	"net/url"
@@ -42,14 +40,15 @@ type ReconnectionOptions struct {
 }
 
 func New(url string) Socket {
-	return Socket{Url: url,
+	return Socket{
+		Url: url,
 		ConnectionOptions: ConnectionOptions{
 			useCompression: false,
 			useSSL:         true,
 		},
 		WebsocketDialer: &websocket.Dialer{},
-		sendMu: &sync.Mutex{},
-		receiveMu: &sync.Mutex{},
+		sendMu:          &sync.Mutex{},
+		receiveMu:       &sync.Mutex{},
 	}
 }
 
@@ -162,44 +161,5 @@ func (socket *Socket) Close() {
 	if socket.OnDisconnected != nil {
 		socket.IsConnected = false
 		socket.OnDisconnected(err, *socket)
-	}
-}
-
-func main() {
-	interrupt := make(chan os.Signal, 1)
-	signal.Notify(interrupt, os.Interrupt)
-
-	socket := New("ws://echo.websocket.org/");
-	socket.OnConnectError = func(err error, socket Socket) {
-		log.Fatal("Got connect error")
-	};
-	socket.OnConnected = func(socket Socket) {
-		log.Println("Connected to server");
-	};
-	socket.OnTextMessage = func(message string, socket Socket) {
-		log.Println("Got message Lolwa " + message)
-	};
-	socket.OnPingReceived = func(data string, socket Socket) {
-		log.Println("Got ping " + data)
-	};
-	socket.OnDisconnected = func(err error, socket Socket) {
-		log.Println("Disconnected from server ")
-		return
-	};
-	socket.Connect()
-
-	i := 0
-	for (i < 10) {
-		socket.SendText("This is my sample test message")
-		i++
-	}
-
-	for {
-		select {
-		case <-interrupt:
-			log.Println("interrupt")
-			socket.Close()
-			return
-		}
 	}
 }
