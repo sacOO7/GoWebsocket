@@ -3,12 +3,26 @@ package gowebsocket
 import (
 	"github.com/gorilla/websocket"
 	"net/http"
-	"log"
 	"errors"
 	"crypto/tls"
 	"net/url"
 	"sync"
+	"github.com/sacOO7/go-logger"
+	"reflect"
 )
+
+type Empty struct {
+}
+
+var logger = logging.GetLogger(reflect.TypeOf(Empty{}).PkgPath()).SetLevel(logging.OFF)
+
+func (socket Socket) EnableLogging() {
+	logger.SetLevel(logging.TRACE)
+}
+
+func (socket Socket) GetLogger() logging.Logger {
+	return logger;
+}
 
 type Socket struct {
 	Conn              *websocket.Conn
@@ -67,6 +81,7 @@ func (socket *Socket) Connect() {
 	socket.Conn, _, err = socket.WebsocketDialer.Dial(socket.Url, socket.RequestHeader)
 
 	if err != nil {
+		logger.Error.Println("Error while connecting to server ", err)
 		socket.IsConnected = false
 		if socket.OnConnectError != nil {
 			socket.OnConnectError(err, *socket)
@@ -75,6 +90,7 @@ func (socket *Socket) Connect() {
 	}
 
 	if socket.OnConnected != nil {
+		logger.Info.Println("Connected to server")
 		socket.IsConnected = true
 		socket.OnConnected(*socket)
 	}
@@ -82,6 +98,7 @@ func (socket *Socket) Connect() {
 	defaultPingHandler := socket.Conn.PingHandler()
 	socket.Conn.SetPingHandler(func(appData string) error {
 		if socket.OnPingReceived != nil {
+			logger.Trace.Println("Received PING from server")
 			socket.OnPingReceived(appData, *socket)
 		}
 		return defaultPingHandler(appData)
@@ -90,6 +107,7 @@ func (socket *Socket) Connect() {
 	defaultPongHandler := socket.Conn.PongHandler()
 	socket.Conn.SetPongHandler(func(appData string) error {
 		if socket.OnPongReceived != nil {
+			logger.Trace.Println("Received PONG from server")
 			socket.OnPongReceived(appData, *socket)
 		}
 		return defaultPongHandler(appData)
@@ -98,6 +116,7 @@ func (socket *Socket) Connect() {
 	defaultCloseHandler := socket.Conn.CloseHandler()
 	socket.Conn.SetCloseHandler(func(code int, text string) error {
 		result := defaultCloseHandler(code, text)
+		logger.Warning.Println("Disconnected from server ", result)
 		if socket.OnDisconnected != nil {
 			socket.IsConnected = false
 			socket.OnDisconnected(errors.New(text), *socket)
@@ -111,10 +130,10 @@ func (socket *Socket) Connect() {
 			messageType, message, err := socket.Conn.ReadMessage()
 			socket.receiveMu.Unlock()
 			if err != nil {
-				log.Println("read:", err)
+				logger.Error.Println("read:", err)
 				return
 			}
-			log.Printf("recv: %s", message)
+			logger.Info.Println("recv: %s", message)
 
 			switch messageType {
 			case websocket.TextMessage:
@@ -133,7 +152,7 @@ func (socket *Socket) Connect() {
 func (socket *Socket) SendText(message string) {
 	err := socket.send(websocket.TextMessage, [] byte (message))
 	if err != nil {
-		log.Println("write:", err)
+		logger.Error.Println("write:", err)
 		return
 	}
 }
@@ -141,7 +160,7 @@ func (socket *Socket) SendText(message string) {
 func (socket *Socket) SendBinary(data [] byte) {
 	err := socket.send(websocket.BinaryMessage, data)
 	if err != nil {
-		log.Println("write:", err)
+		logger.Error.Println("write:", err)
 		return
 	}
 }
@@ -156,7 +175,7 @@ func (socket *Socket) send(messageType int, data [] byte) error {
 func (socket *Socket) Close() {
 	err := socket.send(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	if err != nil {
-		log.Println("write close:", err)
+		logger.Error.Println("write close:", err)
 	}
 	socket.Conn.Close()
 	if socket.OnDisconnected != nil {
