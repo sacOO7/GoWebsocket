@@ -89,16 +89,17 @@ func (socket *Socket) Connect() {
 		return
 	}
 
+	logger.Info.Println("Connected to server")
+
 	if socket.OnConnected != nil {
-		logger.Info.Println("Connected to server")
 		socket.IsConnected = true
 		socket.OnConnected(*socket)
 	}
 
 	defaultPingHandler := socket.Conn.PingHandler()
 	socket.Conn.SetPingHandler(func(appData string) error {
+		logger.Trace.Println("Received PING from server")
 		if socket.OnPingReceived != nil {
-			logger.Trace.Println("Received PING from server")
 			socket.OnPingReceived(appData, *socket)
 		}
 		return defaultPingHandler(appData)
@@ -106,8 +107,8 @@ func (socket *Socket) Connect() {
 
 	defaultPongHandler := socket.Conn.PongHandler()
 	socket.Conn.SetPongHandler(func(appData string) error {
+		logger.Trace.Println("Received PONG from server")
 		if socket.OnPongReceived != nil {
-			logger.Trace.Println("Received PONG from server")
 			socket.OnPongReceived(appData, *socket)
 		}
 		return defaultPongHandler(appData)
