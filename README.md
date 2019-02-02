@@ -118,7 +118,7 @@ Create instance of `Websocket` by passing url of websocket-server end-point
     json_data := map[string]string {
         "Key": "Value"
     } 
-    socket.SendJSON(json_data
+    socket.SendJSON(json_data)
 ```
 
 #### Closing the connection with server
