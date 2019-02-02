@@ -114,8 +114,7 @@ Create instance of `Websocket` by passing url of websocket-server end-point
 ```
 
 #### Sending JSON Data
-```
-   go 
+```go 
     json_data := map[string]string {
         "Key": "Value"
     } 
