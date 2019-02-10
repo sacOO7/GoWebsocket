@@ -1,14 +1,16 @@
 package gowebsocket
 
 import (
-	"github.com/gorilla/websocket"
-	"net/http"
-	"errors"
 	"crypto/tls"
+	"encoding/json"
+	"errors"
+	"net/http"
 	"net/url"
-	"sync"
-	"github.com/sacOO7/go-logger"
 	"reflect"
+	"sync"
+
+	"github.com/gorilla/websocket"
+	"github.com/sacOO7/go-logger"
 )
 
 type Empty struct {
@@ -21,7 +23,7 @@ func (socket Socket) EnableLogging() {
 }
 
 func (socket Socket) GetLogger() logging.Logger {
-	return logger;
+	return logger
 }
 
 type Socket struct {
@@ -32,7 +34,7 @@ type Socket struct {
 	RequestHeader     http.Header
 	OnConnected       func(socket Socket)
 	OnTextMessage     func(message string, socket Socket)
-	OnBinaryMessage   func(data [] byte, socket Socket)
+	OnBinaryMessage   func(data []byte, socket Socket)
 	OnConnectError    func(err error, socket Socket)
 	OnDisconnected    func(err error, socket Socket)
 	OnPingReceived    func(data string, socket Socket)
@@ -46,7 +48,7 @@ type ConnectionOptions struct {
 	UseCompression bool
 	UseSSL         bool
 	Proxy          func(*http.Request) (*url.URL, error)
-	Subprotocols   [] string
+	Subprotocols   []string
 }
 
 // todo Yet to be done
@@ -55,7 +57,7 @@ type ReconnectionOptions struct {
 
 func New(url string) Socket {
 	return Socket{
-		Url: url,
+		Url:           url,
 		RequestHeader: http.Header{},
 		ConnectionOptions: ConnectionOptions{
 			UseCompression: false,
@@ -75,7 +77,7 @@ func (socket *Socket) setConnectionOptions() {
 }
 
 func (socket *Socket) Connect() {
-	var err error;
+	var err error
 	socket.setConnectionOptions()
 
 	socket.Conn, _, err = socket.WebsocketDialer.Dial(socket.Url, socket.RequestHeader)
@@ -151,14 +153,14 @@ func (socket *Socket) Connect() {
 }
 
 func (socket *Socket) SendText(message string) {
-	err := socket.send(websocket.TextMessage, [] byte (message))
+	err := socket.send(websocket.TextMessage, []byte(message))
 	if err != nil {
 		logger.Error.Println("write:", err)
 		return
 	}
 }
 
-func (socket *Socket) SendBinary(data [] byte) {
+func (socket *Socket) SendBinary(data []byte) {
 	err := socket.send(websocket.BinaryMessage, data)
 	if err != nil {
 		logger.Error.Println("write:", err)
@@ -166,7 +168,19 @@ func (socket *Socket) SendBinary(data [] byte) {
 	}
 }
 
-func (socket *Socket) send(messageType int, data [] byte) error {
+func (socket *Socket) SendJSON(v interface{}) {
+	data, err := json.Marshal(v)
+	if err != nil {
+		logger.Error.Println("write:", err)
+		return
+	}
+	if err := socket.send(websocket.TextMessage, data); err != nil {
+		logger.Error.Println("write:", err)
+		return
+	}
+}
+
+func (socket *Socket) send(messageType int, data []byte) error {
 	socket.sendMu.Lock()
 	err := socket.Conn.WriteMessage(messageType, data)
 	socket.sendMu.Unlock()

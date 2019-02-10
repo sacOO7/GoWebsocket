@@ -113,6 +113,12 @@ Create instance of `Websocket` by passing url of websocket-server end-point
     socket.SendBinary(token)
 ```
 
+#### Sending JSON message
+```go
+    data := struct{ Name string }{"Joe"}
+    socket.SendJSON(data)
+```
+
 #### Closing the connection with server
 ```go
     socket.Close()
