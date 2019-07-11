@@ -132,6 +132,10 @@ func (socket *Socket) Connect() {
 			socket.receiveMu.Unlock()
 			if err != nil {
 				logger.Error.Println("read:", err)
+				if socket.OnDisconnected != nil {
+					socket.IsConnected = false
+					socket.OnDisconnected(err, *socket)
+				}
 				return
 			}
 			logger.Info.Println("recv: %s", message)
