@@ -86,7 +86,9 @@ func (socket *Socket) Connect() {
 
 	if err != nil {
 		logger.Error.Println("Error while connecting to server ", err)
-		logger.Error.Println("HTTP Response %d status: %s", resp.StatusCode, resp.Status)
+		if resp != nil {
+			logger.Error.Println("HTTP Response %d status: %s", resp.StatusCode, resp.Status)
+		}
 		socket.IsConnected = false
 		if socket.OnConnectError != nil {
 			socket.OnConnectError(err, *socket)
