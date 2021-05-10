@@ -1,10 +1,11 @@
 package main
 
 import (
-	"github.com/sacOO7/gowebsocket"
 	"log"
 	"os"
 	"os/signal"
+
+	"github.com/sacOO7/gowebsocket"
 )
 
 func main() {
@@ -25,20 +26,19 @@ func main() {
 	socket.RequestHeader.Set("User-Agent", "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/49.0.2623.87 Safari/537.36")
 
 	socket.OnConnectError = func(err error, socket gowebsocket.Socket) {
-		log.Fatal("Recieved connect error ", err)
+		log.Fatal("Received connect error ", err)
 	}
 	socket.OnConnected = func(socket gowebsocket.Socket) {
 		log.Println("Connected to server")
 	}
 	socket.OnTextMessage = func(message string, socket gowebsocket.Socket) {
-		log.Println("Recieved message  " + message)
+		log.Println("Received message  " + message)
 	}
 	socket.OnPingReceived = func(data string, socket gowebsocket.Socket) {
-		log.Println("Recieved ping " + data)
+		log.Println("Received ping " + data)
 	}
 	socket.OnDisconnected = func(err error, socket gowebsocket.Socket) {
 		log.Println("Disconnected from server ")
-		return
 	}
 	socket.Connect()
 
@@ -48,6 +48,7 @@ func main() {
 		i++
 	}
 
+	// nolint: gosimple
 	for {
 		select {
 		case <-interrupt:

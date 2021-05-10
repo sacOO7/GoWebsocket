@@ -3,32 +3,37 @@ package gowebsocket
 import (
 	"crypto/tls"
 	"errors"
-	"github.com/gorilla/websocket"
-	"github.com/sacOO7/go-logger"
+	"fmt"
 	"net/http"
 	"net/url"
 	"reflect"
 	"sync"
 	"time"
+
+	"github.com/gorilla/websocket"
+	logging "github.com/sacOO7/go-logger"
 )
 
-type Empty struct {
+type empty struct {
 }
 
-var logger = logging.GetLogger(reflect.TypeOf(Empty{}).PkgPath()).SetLevel(logging.OFF)
+var logger = logging.GetLogger(reflect.TypeOf(empty{}).PkgPath()).SetLevel(logging.OFF)
 
+// EnableLogging enables the logger
 func (socket Socket) EnableLogging() {
 	logger.SetLevel(logging.TRACE)
 }
 
+// GetLogger gets the logger object
 func (socket Socket) GetLogger() logging.Logger {
 	return logger
 }
 
+// Socket provides a websocket request
 type Socket struct {
 	Conn              *websocket.Conn
 	WebsocketDialer   *websocket.Dialer
-	Url               string
+	URL               string
 	ConnectionOptions ConnectionOptions
 	RequestHeader     http.Header
 	OnConnected       func(socket Socket)
@@ -44,6 +49,7 @@ type Socket struct {
 	receiveMu         *sync.Mutex
 }
 
+// ConnectionOptions contains connection options
 type ConnectionOptions struct {
 	UseCompression bool
 	UseSSL         bool
@@ -51,13 +57,15 @@ type ConnectionOptions struct {
 	Subprotocols   []string
 }
 
-// todo Yet to be done
+// ReconnectionOptions provides options for reconnecting to the websocket
+// TODO Yet to be done
 type ReconnectionOptions struct {
 }
 
+// New creates a new websocket for the given url
 func New(url string) Socket {
 	return Socket{
-		Url:           url,
+		URL:           url,
 		RequestHeader: http.Header{},
 		ConnectionOptions: ConnectionOptions{
 			UseCompression: false,
@@ -77,16 +85,17 @@ func (socket *Socket) setConnectionOptions() {
 	socket.WebsocketDialer.Subprotocols = socket.ConnectionOptions.Subprotocols
 }
 
+// Connect connects to the websocket server
 func (socket *Socket) Connect() {
 	var err error
 	var resp *http.Response
 	socket.setConnectionOptions()
 
-	socket.Conn, resp, err = socket.WebsocketDialer.Dial(socket.Url, socket.RequestHeader)
+	socket.Conn, resp, err = socket.WebsocketDialer.Dial(socket.URL, socket.RequestHeader)
 
 	if err != nil {
 		logger.Error.Println("Error while connecting to server ", err)
-		logger.Error.Println("HTTP Response %d status: %s", resp.StatusCode, resp.Status)
+		logger.Error.Println(fmt.Sprintf("HTTP Response %d status: %s", resp.StatusCode, resp.Status))
 		socket.IsConnected = false
 		if socket.OnConnectError != nil {
 			socket.OnConnectError(err, *socket)
@@ -134,19 +143,22 @@ func (socket *Socket) Connect() {
 		for {
 			socket.receiveMu.Lock()
 			if socket.Timeout != 0 {
-				socket.Conn.SetReadDeadline(time.Now().Add(socket.Timeout))
+				err := socket.Conn.SetReadDeadline(time.Now().Add(socket.Timeout))
+				if err != nil {
+					logger.Error.Println(err)
+				}
 			}
 			messageType, message, err := socket.Conn.ReadMessage()
 			socket.receiveMu.Unlock()
 			if err != nil {
-				logger.Error.Println("read:", err)
+				logger.Error.Println(fmt.Sprintf("read: %s", err))
 				if socket.OnDisconnected != nil {
 					socket.IsConnected = false
 					socket.OnDisconnected(err, *socket)
 				}
 				return
 			}
-			logger.Info.Println("recv: %s", message)
+			logger.Info.Println(fmt.Sprintf("recv: %s", message))
 
 			switch messageType {
 			case websocket.TextMessage:
@@ -162,6 +174,7 @@ func (socket *Socket) Connect() {
 	}()
 }
 
+// SendText sends a test message to the server
 func (socket *Socket) SendText(message string) {
 	err := socket.send(websocket.TextMessage, []byte(message))
 	if err != nil {
@@ -170,6 +183,7 @@ func (socket *Socket) SendText(message string) {
 	}
 }
 
+// SendBinary sends a binary message to the websocket
 func (socket *Socket) SendBinary(data []byte) {
 	err := socket.send(websocket.BinaryMessage, data)
 	if err != nil {
@@ -185,12 +199,13 @@ func (socket *Socket) send(messageType int, data []byte) error {
 	return err
 }
 
+// Close closese the websocket
 func (socket *Socket) Close() {
 	err := socket.send(websocket.CloseMessage, websocket.FormatCloseMessage(websocket.CloseNormalClosure, ""))
 	if err != nil {
 		logger.Error.Println("write close:", err)
 	}
-	socket.Conn.Close()
+	_ = socket.Conn.Close()
 	if socket.OnDisconnected != nil {
 		socket.IsConnected = false
 		socket.OnDisconnected(err, *socket)
