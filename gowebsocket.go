@@ -1,6 +1,7 @@
 package gowebsocket
 
 import (
+	"context"
 	"crypto/tls"
 	"errors"
 	"fmt"
@@ -87,6 +88,11 @@ func (socket *Socket) setConnectionOptions() {
 
 // Connect connects to the websocket server
 func (socket *Socket) Connect() {
+	socket.ConnectWithContext(context.Background())
+}
+
+// ConnectWithContext connects to the websocket server using a context object to allow the user to cancel the requests
+func (socket *Socket) ConnectWithContext(ctx context.Context) {
 	var err error
 	var resp *http.Response
 	socket.setConnectionOptions()
@@ -140,34 +146,45 @@ func (socket *Socket) Connect() {
 	})
 
 	go func() {
+	OUTER:
 		for {
-			socket.receiveMu.Lock()
-			if socket.Timeout != 0 {
-				err := socket.Conn.SetReadDeadline(time.Now().Add(socket.Timeout))
-				if err != nil {
+			select {
+			case <-ctx.Done():
+				if ctx.Err() != nil {
 					logger.Error.Println(err)
 				}
-			}
-			messageType, message, err := socket.Conn.ReadMessage()
-			socket.receiveMu.Unlock()
-			if err != nil {
-				logger.Error.Println(fmt.Sprintf("read: %s", err))
-				if socket.OnDisconnected != nil {
-					socket.IsConnected = false
-					socket.OnDisconnected(err, *socket)
+				socket.Close()
+				// ends the go func loop
+				break OUTER
+			default:
+				socket.receiveMu.Lock()
+				if socket.Timeout != 0 {
+					err := socket.Conn.SetReadDeadline(time.Now().Add(socket.Timeout))
+					if err != nil {
+						logger.Error.Println(err)
+					}
 				}
-				return
-			}
-			logger.Info.Println(fmt.Sprintf("recv: %s", message))
+				messageType, message, err := socket.Conn.ReadMessage()
+				socket.receiveMu.Unlock()
+				if err != nil {
+					logger.Error.Println(fmt.Sprintf("read: %s", err))
+					if socket.OnDisconnected != nil {
+						socket.IsConnected = false
+						socket.OnDisconnected(err, *socket)
+					}
+					return
+				}
+				logger.Info.Println(fmt.Sprintf("recv: %s", message))
 
-			switch messageType {
-			case websocket.TextMessage:
-				if socket.OnTextMessage != nil {
-					socket.OnTextMessage(string(message), *socket)
-				}
-			case websocket.BinaryMessage:
-				if socket.OnBinaryMessage != nil {
-					socket.OnBinaryMessage(message, *socket)
+				switch messageType {
+				case websocket.TextMessage:
+					if socket.OnTextMessage != nil {
+						socket.OnTextMessage(string(message), *socket)
+					}
+				case websocket.BinaryMessage:
+					if socket.OnBinaryMessage != nil {
+						socket.OnBinaryMessage(message, *socket)
+					}
 				}
 			}
 		}

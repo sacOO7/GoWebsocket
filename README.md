@@ -39,6 +39,14 @@ Create instance of `Websocket` by passing url of websocket-server end-point
     socket.Connect()
 ```
 
+- For connecting wit a cancellable context:
+```go
+    //This will send websocket handshake request to socketcluster-server
+    ctx, cancel := context.WithCancel()
+    socket.ConnectWithContext()
+```
+
+
 #### Registering All Listeners
 ```go
     package main
