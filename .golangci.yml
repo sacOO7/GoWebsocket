@@ -1,0 +1,26 @@
+run:
+  concurrency: 10
+  tests: true
+  skip-dirs-use-default: false
+  timeout: 5m
+
+linters-settings:
+  golint:
+    min-confidence: 0.8
+  gofmt:
+    simplify: true
+
+linters:
+  enable:
+    - gofmt
+    - gosimple
+    - govet
+    - unconvert
+    - misspell
+    - goimports
+    - golint
+  disable-all: false
+  fast: false
+
+issues:
+  exclude-use-default: false
