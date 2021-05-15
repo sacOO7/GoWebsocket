@@ -1,9 +1,9 @@
 package gowebsocket
 
 import (
+	"log"
 	"net/http"
 	"net/url"
-	"log"
 )
 
 func BuildProxy(Url string) func(*http.Request) (*url.URL, error) {
