@@ -62,23 +62,23 @@ Create instance of `Websocket` by passing url of websocket-server end-point
     	};
     	
         socket.OnConnectError = func(err error, socket gowebsocket.Socket) {
-            log.Println("Recieved connect error ", err)
+            log.Println("Received connect error ", err)
         };
         
     	socket.OnTextMessage = func(message string, socket gowebsocket.Socket) {
-    		log.Println("Recieved message " + message)
+    		log.Println("Received message " + message)
     	};
     	
     	socket.OnBinaryMessage = func(data [] byte, socket gowebsocket.Socket) {
-            log.Println("Recieved binary data ", data)
+            log.Println("Received binary data ", data)
         };
         
     	socket.OnPingReceived = func(data string, socket gowebsocket.Socket) {
-    		log.Println("Recieved ping " + data)
+    		log.Println("Received ping " + data)
     	};
     	
     	socket.OnPongReceived = func(data string, socket gowebsocket.Socket) {
-            log.Println("Recieved pong " + data)
+            log.Println("Received pong " + data)
         };
         
     	socket.OnDisconnected = func(err error, socket gowebsocket.Socket) {
